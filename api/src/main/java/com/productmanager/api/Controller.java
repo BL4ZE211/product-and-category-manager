@@ -1,5 +1,6 @@
 package com.productmanager.api;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -10,13 +11,16 @@ import java.util.List;
 @RequestMapping("/api")
 public class Controller {
 
-    ArrayList<Category> categoriesList = new ArrayList<>();
-    ArrayList<Product> productsList = new ArrayList<>();
+    @Autowired
+    CategoryRepository categoryRepository;
+
+    @Autowired
+    ProductRepository productRepository;
 
     @PostMapping("/category")
     public String createCategory(@RequestBody Category newCategory) {
         if (newCategory.getName() != null && !newCategory.getName().trim().isEmpty()) {
-            categoriesList.add(newCategory);
+            categoryRepository.save(newCategory);
             return "Category created";
         }
         return "Give the category a valid name";
@@ -24,63 +28,63 @@ public class Controller {
 
     @PostMapping("/product")
     public String createProduct(@RequestBody Product newProduct) {
-        long c_id = newProduct.getCategory_id();
-        for(Category ele:categoriesList){
-            if(ele.getId()== c_id && ele.is_active()){
-                productsList.add(newProduct);
-                return "Product created";
-            }
+        Category category = categoryRepository.findById(newProduct.getCategory_id())
+                .orElseThrow(() -> new NotFoundException("Category not found with id: " + newProduct.getCategory_id()));
+        if(category!=null){
+            productRepository.save(newProduct);
+            return "Product Created Sucessfully";
         }
-        return "Catogory not found";
+        return "Give a valid Product Id";
+
+
     }
 
     @GetMapping("/products")
     public List<Product> getProducts(){
-        return productsList;
+        return productRepository.findAll();
     }
 
     @GetMapping("/products/{id}")
     public String getProductById(@PathVariable long id ){
-        for(Product ele:productsList){
-            if(ele.getId()==id){
-                return  ele.toString();
-            }
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Category not found with id: " + id));
+        if(product!=null){
+            return product.toString();
         }
-            return "Product Not Found";
+        return "No product with id: "+ id;
+
     }
 
 
     @GetMapping("/category")
     public  List<Category> getCategory(){
-        return categoriesList;
+        return categoryRepository.findAll();
     }
 
     @PutMapping("/product")
     public String updateProduct(@RequestBody Product product){
-        long pId = product.getId();
-        for(Product ele:productsList){
-            if(ele.getId() == pId) {
-                ele.setId(pId);
-                ele.setName(product.getName());
-                ele.setPrice(product.getPrice());
-                ele.setUpdated_at(LocalDateTime.now());
+        long id = product.getId();
+        Product product1 = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Category not found with id: " + id));
+        if(product1!=null){
+            product1.setUpdated_at(LocalDateTime.now());
+            product1.setPrice(product.getPrice());
+            product1.setName(product.getName());
 
-                return "Product Details Updated";
-            }
+            return "Product Updated ";
         }
-        return  "Provide Valid Product Id";
+        return "No product with id: "+id;
     }
 
     @DeleteMapping("/products/{id}")
     public String deleteProduct(@PathVariable long id){
-        for (Product ele : productsList){
-            if(ele.getId()==id){
-                ele.set_active(false);
-
-                return "Product deleted successfully";
-            }
+        Product product1 = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Category not found with id: " + id));
+        if(product1!=null){
+            product1.set_active(false);
+            return "Product deleted Sucessfully";
         }
-        return "Product Not Found";
+        return "No product with id: "+id;
     }
 
 
